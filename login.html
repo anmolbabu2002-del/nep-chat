@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatApp - Connect & Chat</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <!-- Global Dynamic Mesh Background is handled by CSS body::before -->
+
+
+    <div class="welcome-container">
+        <!-- Left Side - Hero Section -->
+        <div class="hero-section">
+            <div class="hero-content" style="animation: fadeInSlideUp 1s ease-out;">
+                <div class="brand-logo" style="margin-bottom: 2rem;">
+                    <i class="fas fa-comments"
+                        style="font-size: 3.5rem; color: #6366f1; background: white; padding: 1.5rem; border-radius: 1.5rem; box-shadow: var(--shadow-premium);"></i>
+                    <h1
+                        style="font-size: 4rem; font-weight: 900; background: var(--gradient-primary); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-top: 1rem;">
+                        ChatApp</h1>
+                </div>
+                <h2 style="font-size: 2.8rem; font-weight: 800; color: #1e1b4b; margin-bottom: 1.5rem;">Connect with
+                    <span style="color: #6366f1;">Ease</span>
+                </h2>
+                <p
+                    style="font-size: 1.25rem; color: #485460; margin-bottom: 2.5rem; max-width: 400px; margin-left: auto; margin-right: auto;">
+                    The most satisfying way to stay in touch. Clean, fast, and beautiful.</p>
+
+                <div class="features" style="display: flex; gap: 1.5rem; justify-content: center;">
+                    <div
+                        style="background: white; padding: 0.8rem 1.5rem; border-radius: 2rem; box-shadow: var(--shadow-sm); font-weight: 700; color: #485460;">
+                        <i class="fas fa-bolt" style="color: #0fbcf9; margin-right: 0.5rem;"></i> Fast
+                    </div>
+                    <div
+                        style="background: white; padding: 0.8rem 1.5rem; border-radius: 2rem; box-shadow: var(--shadow-sm); font-weight: 700; color: #485460;">
+                        <i class="fas fa-shield-alt" style="color: #05c46b; margin-right: 0.5rem;"></i> Secure
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side - Login Form -->
+        <div class="auth-section">
+            <div class="premium-card"
+                style="box-shadow: 0 40px 100px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.8);">
+                <div class="auth-header" style="text-align: center; margin-bottom: 2.5rem;">
+                    <h3 id="authTitle" style="font-size: 2rem; font-weight: 800; color: #1e272e;">Welcome Back</h3>
+                    <p id="authSubtitle" style="color: #808e9b; font-weight: 500;">Please log in to your account</p>
+                </div>
+
+                <!-- Login Form -->
+                <form id="loginForm" class="auth-form">
+                    <div class="input-group">
+                        <label for="username">
+                            <i class="fas fa-user"></i>
+                            Username
+                        </label>
+                        <div class="input-wrapper">
+                            <input type="text" id="username" class="premium-input" placeholder="Enter your username"
+                                required autocomplete="username" pattern="[a-zA-Z0-9_]{3,20}"
+                                title="Username must be 3-20 characters, letters, numbers, and underscores only">
+                            <i class="fas fa-check-circle input-icon success-icon hidden"></i>
+                            <i class="fas fa-exclamation-circle input-icon error-icon hidden"></i>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="password">
+                            <i class="fas fa-lock"></i>
+                            Password
+                        </label>
+                        <div class="input-wrapper">
+                            <input type="password" id="password" class="premium-input" placeholder="Enter your password"
+                                required autocomplete="current-password" minlength="6"
+                                title="Password must be at least 6 characters">
+                            <button type="button" class="password-toggle" id="passwordToggle"
+                                style="top: 25px; transform: none;">
+                                <i class="fas fa-eye text-indigo-400"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="loginBtn" class="premium-btn w-full">
+                        <span id="btnText">Sign In</span>
+                        <div id="btnLoader" class="btn-spinner hidden"></div>
+                    </button>
+                </form>
+
+                <!-- Register Toggle -->
+                <div class="auth-toggle">
+                    <p>Don't have an account?
+                        <button id="registerBtn" class="link-btn">
+                            <span id="registerBtnText">Create one</span>
+                            <div id="registerLoader" class="btn-spinner hidden"></div>
+                        </button>
+                    </p>
+                </div>
+
+
+                <!-- Messages -->
+                <div id="errorMessage" class="message error-message hidden">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span></span>
+                </div>
+                <div id="successMessage" class="message success-message hidden">
+                    <i class="fas fa-check-circle"></i>
+                    <span></span>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="auth-footer">
+                <p>© <span id="currentYear"></span> ChatApp. Made with <i class="fas fa-heart"></i> for better
+                    communication.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        // DOM elements
+        const loginForm = document.getElementById('loginForm');
+        const registerBtn = document.getElementById('registerBtn');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const passwordToggle = document.getElementById('passwordToggle');
+        const loginBtn = document.getElementById('loginBtn');
+        const btnText = document.getElementById('btnText');
+        const btnLoader = document.getElementById('btnLoader');
+        const registerBtnText = document.getElementById('registerBtnText');
+        const registerLoader = document.getElementById('registerLoader');
+        const authTitle = document.getElementById('authTitle');
+        const authSubtitle = document.getElementById('authSubtitle');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+
+        let isLoginMode = true; // true for login, false for register
+
+        // Check if user is already logged in
+        const existingUsername = localStorage.getItem('user_username');
+        if (existingUsername) {
+            window.location.href = 'users.html';
+        }
+
+        // Login form submission handler
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!username || !password) {
+                showError('Please fill in all fields');
+                return;
+            }
+
+            // Validate username format
+            if (!isValidUsername(username)) {
+                showError('Username must be 3-20 characters, letters, numbers, and underscores only');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters');
+                return;
+            }
+
+            if (isLoginMode) {
+                await loginUser(username, password);
+            } else {
+                await registerUser(username, password);
+            }
+        });
+
+        // Register button handler
+        registerBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleMode();
+        });
+
+        // Password toggle handler
+        passwordToggle.addEventListener('click', () => {
+            togglePasswordVisibility();
+        });
+
+        async function loginUser(username, password) {
+            showLoading(true, true);
+            hideMessages();
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Store user data
+                    sessionStorage.setItem('user_username', data.user.username);
+                    sessionStorage.setItem('user_name', data.user.name);
+                    sessionStorage.setItem('user_uid', data.user.uid);
+                    sessionStorage.setItem('user_sessionId', data.sessionId);
+                    sessionStorage.setItem('user_profile_pic', data.user.profile_pic || '');
+
+                    localStorage.setItem('user_username', data.user.username);
+                    localStorage.setItem('user_name', data.user.name);
+                    localStorage.setItem('user_uid', data.user.uid);
+                    localStorage.setItem('user_sessionId', data.sessionId);
+                    localStorage.setItem('user_profile_pic', data.user.profile_pic || '');
+
+                    showSuccess('Login successful!');
+
+                    // Redirect to users page
+                    setTimeout(() => {
+                        window.location.href = 'users.html';
+                    }, 1500);
+                } else {
+                    showError(data.error || 'Login failed');
+                }
+
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('Network error. Please try again.');
+            } finally {
+                showLoading(false, true);
+            }
+        }
+
+        async function registerUser(username, password) {
+            showLoading(true, false);
+            hideMessages();
+
+            console.log('Sending registration request for:', username);
+
+            try {
+                const requestBody = {
+                    username: username,
+                    password: password,
+                    name: username // Use username as display name initially
+                };
+
+                console.log('Request body:', requestBody);
+
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (data.success) {
+                    showSuccess('Account created successfully! Please log in.');
+
+                    // Switch back to login mode
+                    setTimeout(() => {
+                        toggleMode();
+                    }, 2000);
+                } else {
+                    showError(data.error || 'Registration failed');
+                }
+
+            } catch (error) {
+                console.error('Registration error:', error);
+                showError('Network error. Please try again.');
+            } finally {
+                showLoading(false, false);
+            }
+        }
+
+        function toggleMode() {
+            isLoginMode = !isLoginMode;
+
+            if (isLoginMode) {
+                authTitle.textContent = 'Welcome Back!';
+                authSubtitle.textContent = 'Sign in to your account to continue';
+                btnText.textContent = 'Sign In';
+                registerBtnText.textContent = 'Create one';
+                loginForm.querySelector('button[type="submit"]').className = 'auth-btn primary';
+            } else {
+                authTitle.textContent = 'Join ChatApp';
+                authSubtitle.textContent = 'Create your account to get started';
+                btnText.textContent = 'Create Account';
+                registerBtnText.textContent = 'Back to Login';
+                loginForm.querySelector('button[type="submit"]').className = 'auth-btn primary';
+            }
+
+            // Clear form
+            usernameInput.value = '';
+            passwordInput.value = '';
+            hideMessages();
+        }
+
+        function togglePasswordVisibility() {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
+
+            const icon = passwordToggle.querySelector('i');
+            icon.className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+        }
+
+        function isValidUsername(username) {
+            const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+            return usernameRegex.test(username);
+        }
+
+        // Show loading state
+        function showLoading(show, isLogin = true) {
+            if (isLogin) {
+                if (show) {
+                    btnText.classList.add('hidden');
+                    btnLoader.classList.remove('hidden');
+                    loginBtn.disabled = true;
+                } else {
+                    btnText.classList.remove('hidden');
+                    btnLoader.classList.add('hidden');
+                    loginBtn.disabled = false;
+                }
+            } else {
+                if (show) {
+                    registerBtnText.classList.add('hidden');
+                    registerLoader.classList.remove('hidden');
+                    registerBtn.disabled = true;
+                } else {
+                    registerBtnText.classList.remove('hidden');
+                    registerLoader.classList.add('hidden');
+                    registerBtn.disabled = false;
+                }
+            }
+        }
+
+        function showError(message) {
+            const messageSpan = errorMessage.querySelector('span');
+            messageSpan.textContent = message;
+            errorMessage.classList.remove('hidden');
+            successMessage.classList.add('hidden');
+        }
+
+        function showSuccess(message) {
+            const messageSpan = successMessage.querySelector('span');
+            messageSpan.textContent = message;
+            successMessage.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+        }
+
+        function hideMessages() {
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
+        }
+
+        // Username formatting
+        usernameInput.addEventListener('input', (e) => {
+            // Only allow letters, numbers, and underscores
+            e.target.value = e.target.value.replace(/[^a-zA-Z0-9_]/g, '');
+        });
+
+        // Set current year
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
+</body>
+
+</html>

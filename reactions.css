@@ -1,0 +1,174 @@
+/* Reaction Component Styles */
+.message {
+    position: relative;
+}
+
+.reaction-bar {
+    position: absolute;
+    top: -35px;
+    right: 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 25px;
+    padding: 5px 10px;
+    display: none;
+    gap: 8px;
+    align-items: center;
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+}
+
+.group:hover .reaction-bar {
+    display: flex;
+}
+
+.reaction-emoji {
+    font-size: 20px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    padding: 4px;
+}
+
+.reaction-emoji:hover {
+    transform: scale(1.3);
+}
+
+.reaction-display {
+    position: absolute;
+    bottom: -12px;
+    right: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    z-index: 20;
+}
+
+.reaction-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 15px;
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s;
+}
+
+.reaction-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.reaction-badge.my-reaction {
+    background: var(--primary-color);
+    color: var(--text-inverse);
+    border-color: var(--primary-color);
+}
+
+.reaction-count {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Emoji Picker Modal */
+.emoji-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.emoji-modal-content {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 450px;
+    max-height: 600px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+}
+
+.emoji-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.emoji-modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-family: var(--font-heading);
+}
+
+.emoji-close-btn {
+    background: none;
+    border: none;
+    font-size: 32px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    line-height: 1;
+}
+
+.emoji-categories {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+}
+
+.emoji-category-btn {
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.emoji-category-btn:hover {
+    background: var(--bg-secondary);
+}
+
+.emoji-category-btn.active {
+    background: var(--primary-color);
+    color: var(--text-inverse);
+}
+
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 8px;
+    padding: 16px;
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+.emoji-item {
+    font-size: 28px;
+    cursor: pointer;
+    text-align: center;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+}
+
+.emoji-item:hover {
+    background: var(--bg-secondary);
+    transform: scale(1.2);
+}

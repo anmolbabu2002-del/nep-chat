@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App - Users</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header glass-effect">
+            <div class="header-content">
+                <h1
+                    class="text-2xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                    ChatApp</h1>
+                <div class="user-info flex items-center gap-3">
+                    <div id="ownAvatarContainer" class="relative group"
+                        onclick="handleAvatarClick(event, currentUser.profile_pic)"
+                        ondblclick="handleOwnAvatarDblClick(event)">
+                        <div id="userAvatar" class="app-avatar avatar-interactive">3
+                            <!-- Initial or Image -->
+                            <span id="userInitial">?</span>
+                        </div>
+                        <div
+                            class="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            <i class="fas fa-camera text-white text-xs"></i>
+                        </div>
+                        <input type="file" id="profilePicInput" class="hidden" accept="image/*"
+                            onchange="uploadProfilePic(this)">
+                    </div>
+                    <span id="userName" class="font-bold text-gray-800">Loading...</span>
+                    <button id="logoutBtn" class="logout-btn">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Search Section -->
+            <section class="premium-card mb-8">
+                <h2>Find Users</h2>
+                <div class="search-container">
+                    <input type="text" id="searchUsername" placeholder="Enter username to search"
+                        style="flex: 1; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;"
+                        pattern="[a-zA-Z0-9_]{3,20}"
+                        title="Username must be 3-20 characters, letters, numbers, and underscores only">
+                    <button id="searchBtn" class="search-btn">
+                        <span id="searchBtnText">Search</span>
+                        <div id="searchLoader" class="loader hidden"></div>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Search Results -->
+            <section id="searchResults" class="premium-card hidden mb-8">
+                <h3>Search Results</h3>
+                <div id="resultsContainer" class="results-container"></div>
+            </section>
+
+            <!-- Recent Chats -->
+            <section class="premium-card">
+                <h3>Recent Chats</h3>
+                <div id="recentChatsContainer" class="chats-container">
+                    <p class="no-chats">No recent chats</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Messages -->
+        <div id="errorMessage" class="error-message hidden"></div>
+        <div id="successMessage" class="success-message hidden"></div>
+
+        <!-- Image Preview Modal -->
+        <div id="imagePreviewModal" class="preview-modal" onclick="closePreview()">
+            <div class="preview-close" onclick="closePreview()">&times;</div>
+            <div class="preview-content" onclick="event.stopPropagation()">
+                <img id="previewImage" src="" alt="Profile Preview">
+            </div>
+        </div>
+    </div>
+
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+
+        // Global variables
+        let currentUser = null;
+        let socket = null;
+        let recentChats = JSON.parse(localStorage.getItem('recentChats') || '[]');
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // DOM elements
+        const userName = document.getElementById('userName');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const searchUsername = document.getElementById('searchUsername');
+        const searchBtn = document.getElementById('searchBtn');
+        const searchBtnText = document.getElementById('searchBtnText');
+        const searchLoader = document.getElementById('searchLoader');
+        const searchResults = document.getElementById('searchResults');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const recentChatsContainer = document.getElementById('recentChatsContainer');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+
+        // Initialize app
+        async function initApp() {
+            try {
+                // Check authentication
+                const username = localStorage.getItem('user_username');
+                const uid = localStorage.getItem('user_uid');
+
+                if (!username || !uid) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                currentUser = {
+                    uid: uid,
+                    name: localStorage.getItem('user_name'),
+                    username: username,
+                    profile_pic: localStorage.getItem('user_profile_pic')
+                };
+
+                // Update UI
+                userName.textContent = `@${currentUser.username}`;
+                updateOwnAvatar(currentUser.profile_pic, currentUser.name);
+
+                // Initialize Socket.IO with session auth
+                await initializeSocket();
+
+                // Load recent chats
+                loadRecentChats();
+
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showError('Failed to initialize app');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 2000);
+            }
+        }
+
+        // Initialize Socket.IO connection
+        async function initializeSocket() {
+            try {
+                // Get stored session ID from login
+                const sessionId = localStorage.getItem('user_sessionId');
+                if (!sessionId) {
+                    console.error('❌ No session ID found! Please log in again.');
+                    showError('Session expired. Please log in again.');
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                    return;
+                }
+
+                console.log('🔌 Initializing socket connection...');
+                console.log('- Session ID:', sessionId);
+                console.log('- User ID:', currentUser.uid);
+
+                socket = io('http://localhost:3000', {
+                    auth: {
+                        sessionId: sessionId,
+                        uid: currentUser.uid
+                    },
+                    transports: ['polling'], // Start with polling only for reliability
+                    timeout: 20000,
+                    forceNew: false,
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000
+                });
+
+                socket.on('connect', () => {
+                    console.log('✅ Socket connected successfully!');
+                    console.log('- Socket ID:', socket.id);
+                });
+
+                socket.on('connect_error', (error) => {
+                    console.log('❌ Socket connection error:', error);
+                    console.log('- Error message:', error.message);
+                    console.log('- Error type:', error.type);
+                    showError('Connection failed. Please refresh the page.');
+                });
+
+                socket.on('disconnect', (reason) => {
+                    console.log('🔌 Socket disconnected:', reason);
+                });
+
+                socket.on('error', (error) => {
+                    console.log('🚨 Socket error:', error);
+                    showError('Connection error: ' + error);
+                });
+
+            } catch (error) {
+                console.error('Socket initialization error:', error);
+                throw error;
+            }
+        }
+
+
+        // Search functionality
+        searchBtn.addEventListener('click', searchUser);
+        searchUsername.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchUser();
+            }
+        });
+
+        async function searchUser() {
+            const username = searchUsername.value.trim();
+
+            if (!username) {
+                showError('Please enter a username');
+                return;
+            }
+
+            if (!isValidUsername(username)) {
+                showError('Username must be 3-20 characters, letters, numbers, and underscores only');
+                return;
+            }
+
+            showSearchLoading(true);
+            hideMessages();
+
+            try {
+                const response = await fetch(`/api/users/search/${encodeURIComponent(username)}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    displaySearchResults([data.user]);
+                } else {
+                    if (data.error === "User not found") {
+                        showError('No user found with this username');
+                    } else {
+                        showError(data.error || 'Search failed');
+                    }
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                showError('Network error. Please try again.');
+            } finally {
+                showSearchLoading(false);
+            }
+        }
+
+        function isValidUsername(username) {
+            const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+            return usernameRegex.test(username);
+        }
+
+        function displaySearchResults(users) {
+            if (users.length === 0) {
+                showError('No users found');
+                return;
+            }
+
+            const resultsHTML = users.map(user => `
+                <div class="user-card">
+                    <div class="user-info">
+                        <div class="app-avatar avatar-interactive" onclick="handleAvatarClick(event, '${user.profile_pic || ''}')">
+                            ${user.profile_pic ? `<img src="${user.profile_pic}">` : user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div class="user-details">
+                            <h4>${user.name}</h4>
+                            <p>@${user.username}</p>
+                        </div>
+                    </div>
+                    <button class="primary-btn" onclick="startChat('${user.uid}', '${user.name.replace(/'/g, "\\'")}', '${user.username.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-comment"></i> Chat
+                    </button>
+                </div>
+            `).join('');
+
+            resultsContainer.innerHTML = resultsHTML;
+            searchResults.classList.remove('hidden');
+        }
+
+        function startChat(uid, name, username) {
+            // Add to recent chats
+            const chatIndex = recentChats.findIndex(chat => chat.uid === uid);
+            if (chatIndex === -1) {
+                recentChats.unshift({ uid, name, username });
+                if (recentChats.length > 10) {
+                    recentChats = recentChats.slice(0, 10);
+                }
+                localStorage.setItem('recentChats', JSON.stringify(recentChats));
+                loadRecentChats();
+            }
+
+            // Navigate to chat
+            window.location.href = `chat.html?uid=${uid}&name=${encodeURIComponent(name)}`;
+        }
+
+        async function loadRecentChats() {
+            try {
+                // Load actual conversations from database
+                const sessionId = localStorage.getItem('user_sessionId');
+                const response = await fetch('/api/conversations', {
+                    headers: {
+                        'x-session-id': sessionId
+                    }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const conversations = data.conversations;
+
+                    if (conversations.length === 0) {
+                        recentChatsContainer.innerHTML = '<p class="no-chats">No conversations yet</p>';
+                        return;
+                    }
+
+                    recentChatsContainer.innerHTML = conversations.map(conversation => {
+                        // Provide fallback values for null/undefined fields
+                        const name = conversation.name || 'Unknown User';
+                        const username = conversation.username || 'unknown';
+                        const uid = conversation.uid || '';
+                        const lastMessageTime = conversation.last_message_time ?
+                            new Date(conversation.last_message_time).toLocaleDateString() : 'Unknown';
+                        const unreadBadge = (conversation.unread_count > 0) ?
+                            `<span class="unread-badge">${conversation.unread_count}</span>` : '';
+
+                        let displayMessage = conversation.last_message || 'No messages yet';
+                        if (displayMessage.includes('<img')) displayMessage = '📷 Photo';
+                        else if (displayMessage.includes('<a href')) displayMessage = '📁 File';
+
+                        return `
+                            <div class="chat-item ${(conversation.unread_count > 0) ? 'has-unread' : ''}" onclick="startChat('${uid}', '${name.replace(/'/g, "\\'")}', '${username.replace(/'/g, "\\'")}')">
+                                <div class="app-avatar avatar-interactive" onclick="handleAvatarClick(event, '${conversation.profile_pic || ''}')">
+                                    ${conversation.profile_pic ? `<img src="${conversation.profile_pic}">` : name.charAt(0).toUpperCase()}
+                                </div>
+                                <div class="chat-details">
+                                    <div class="chat-header">
+                                        <h4>${name}</h4>
+                                        <span class="chat-time">${lastMessageTime}</span>
+                                    </div>
+                                    <div class="chat-preview">
+                                        <p class="last-message">${displayMessage}</p>
+                                        ${unreadBadge}
+                                    </div>
+                                </div>
+                                <div class="chat-arrow">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    console.log(`Loaded ${conversations.length} conversations`);
+                    console.log('Sample conversation data:', conversations[0]); // Debug first conversation
+                } else {
+                    console.error('Failed to load conversations:', data.error);
+                    recentChatsContainer.innerHTML = '<p class="no-chats">Failed to load conversations</p>';
+                }
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+                // Fallback to localStorage if API fails
+                if (recentChats.length === 0) {
+                    recentChatsContainer.innerHTML = '<p class="no-chats">No recent chats</p>';
+                    return;
+                }
+
+                recentChatsContainer.innerHTML = recentChats.map(chat => `
+                    <div class="chat-item" onclick="startChat('${chat.uid}', '${chat.name}', '${chat.username}')">
+                        <div class="chat-avatar">${chat.name.charAt(0).toUpperCase()}</div>
+                        <div class="chat-details">
+                            <h4>${chat.name}</h4>
+                            <p>@${chat.username}</p>
+                        </div>
+                        <div class="chat-arrow">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Logout
+        logoutBtn.addEventListener('click', () => {
+            // Clear all stored data
+            localStorage.clear();
+            sessionStorage.clear();
+
+            window.location.href = 'login.html';
+        });
+
+        // Utility functions
+        function showSearchLoading(show) {
+            if (show) {
+                searchBtnText.classList.add('hidden');
+                searchLoader.classList.remove('hidden');
+                searchBtn.disabled = true;
+            } else {
+                searchBtnText.classList.remove('hidden');
+                searchLoader.classList.add('hidden');
+                searchBtn.disabled = false;
+            }
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+            successMessage.classList.add('hidden');
+        }
+
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+        }
+
+        function hideMessages() {
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
+        }
+
+        function updateOwnAvatar(url, name) {
+            const avatar = document.getElementById('userAvatar');
+            const initial = document.getElementById('userInitial');
+            if (url) {
+                avatar.innerHTML = `<img src="${url}" class="w-full h-full object-cover">`;
+            } else {
+                avatar.innerHTML = `<span id="userInitial">${name.charAt(0).toUpperCase()}</span>`;
+            }
+        }
+
+        // --- Profile Picture Functions ---
+        let clickTimer = null;
+
+        function handleAvatarClick(event, imgSrc) {
+            if (event) event.stopPropagation();
+            if (!imgSrc) return;
+
+            if (clickTimer) clearTimeout(clickTimer);
+
+            clickTimer = setTimeout(() => {
+                showImagePreview(imgSrc);
+                clickTimer = null;
+            }, 250);
+        }
+
+        function handleOwnAvatarDblClick(event) {
+            if (event) event.stopPropagation();
+
+            if (clickTimer) {
+                clearTimeout(clickTimer);
+                clickTimer = null;
+            }
+
+            document.getElementById('profilePicInput').click();
+        }
+
+        function showImagePreview(src) {
+            const modal = document.getElementById('imagePreviewModal');
+            const img = document.getElementById('previewImage');
+            img.src = src;
+            modal.classList.add('active');
+        }
+
+        function closePreview() {
+            document.getElementById('imagePreviewModal').classList.remove('active');
+        }
+
+        async function uploadProfilePic(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            console.log('📤 Starting profile picture upload...', file.name);
+            const formData = new FormData();
+            formData.append('profile_pic', file);
+
+            try {
+                const sessionId = localStorage.getItem('user_sessionId');
+                if (!sessionId) {
+                    showError('Session missing. Please log in again.');
+                    return;
+                }
+
+                // Use origin to ensure we hit the correct server even if served from file system (if possible)
+                const uploadUrl = window.location.origin === 'null' ? 'http://localhost:3000/api/profile/upload' : '/api/profile/upload';
+
+                const response = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: {
+                        'x-session-id': sessionId
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Upload failed with status:', response.status, errorText);
+                    showError(`Server error (${response.status}): ${errorText.substring(0, 50)}`);
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    console.log('✅ Upload successful:', data.profile_pic);
+                    localStorage.setItem('user_profile_pic', data.profile_pic);
+                    updateOwnAvatar(data.profile_pic, currentUser.name);
+                    showSuccess('Profile picture updated successfully!');
+                } else {
+                    console.error('❌ server responded with success:false', data);
+                    showError(data.error || 'Upload failed');
+                }
+            } catch (error) {
+                console.error('❌ Network or Fetch error:', error);
+                showError('Network error: ' + error.message);
+            }
+        }
+
+        // Username formatting
+        searchUsername.addEventListener('input', (e) => {
+            // Only allow letters, numbers, and underscores
+            e.target.value = e.target.value.replace(/[^a-zA-Z0-9_]/g, '');
+        });
+
+        // Initialize app on load
+        initApp();
+    </script>
+</body>
+
+</html>
